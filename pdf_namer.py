@@ -29,10 +29,23 @@ class PdfReader:
         return '-'.join([author_part, title_part]) + '.pdf'
 
     def rename_files(self):
+        fail_counter = 0
         for pdf_file in self.pdf_list:
-            author, title = self.get_info(pdf_file)
-            new_name = self.generate_name(author, title)
-            os.rename(pdf_file, os.path.join(self.folder_path, new_name))
+            try:
+                author, title = self.get_info(pdf_file)
+                if author == '' or title == '' or author is None or title is None:
+                    print(f"Failed renaming with file {pdf_file}.")
+                    print(f"The detected values were author: {author} and title: {title}.")
+                    fail_counter += 1
+                    continue
+                new_name = self.generate_name(author, title)
+                print(f"Renaming {pdf_file}.")
+                os.rename(pdf_file, os.path.join(self.folder_path, new_name))
+            except Exception as e:
+                print(e)
+                fail_counter += 1
+
+        print(f"Fail ratio: {fail_counter}/{len(self.pdf_list)}.")
 
 
 if __name__ == '__main__':
