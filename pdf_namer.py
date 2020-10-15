@@ -2,6 +2,7 @@
 import argparse
 import glob
 import os
+import shutil
 
 from PyPDF2 import PdfFileReader
 
@@ -10,6 +11,8 @@ class PdfReader:
     def __init__(self, folder_path):
         self.folder_path = folder_path
         self.pdf_list = glob.glob(os.path.join(folder_path, '*.pdf'))
+        self.renamed_folder = os.path.join(self.folder_path, 'renamed')
+        self.failed_folder = os.path.join(self.folder_path, 'failed')
 
     @staticmethod
     def get_info(pdf_path):
@@ -17,7 +20,6 @@ class PdfReader:
         with open(path, 'rb') as f:
             pdf = PdfFileReader(f)
             info = pdf.getDocumentInfo()
-
         author = info.author
         title = info.title
         return author, title
@@ -26,16 +28,23 @@ class PdfReader:
         author_part = author.split(',')[0].split(' ')[-1]
         title_part = title.replace(' ', '_')
         new_name = '-'.join([author_part, title_part]) + '.pdf'
-        new_path = os.path.join(self.folder_path, new_name)
+        new_path = os.path.join(self.renamed_folder, new_name)
         deduplication_number = 0
-        if os.path.isfile(new_path):
+        while os.path.isfile(new_path):
             new_name = '-'.join([author_part, title_part, str(deduplication_number)]) + '.pdf'
-            new_path = os.path.join(self.folder_path, new_name)
+            new_path = os.path.join(self.renamed_folder, new_name)
             deduplication_number += 1
         return new_path
 
-    def rename_files(self):
+    def copy_files(self):
         fail_counter = 0
+        try:
+            os.mkdir(os.path.join(self.folder_path, self.renamed_folder))
+            os.mkdir(os.path.join(self.folder_path, self.failed_folder))
+        except FileExistsError:
+            input_value = input('Path exists, you want to continue? y/n ')
+            if input_value != 'y':
+                raise FileExistsError
         for pdf_file in self.pdf_list:
             try:
                 author, title = self.get_info(pdf_file)
@@ -45,7 +54,7 @@ class PdfReader:
                     fail_counter += 1
                     continue
                 new_path = self.generate_name(author, title)
-                os.rename(pdf_file, new_path)
+                shutil.copyfile(pdf_file, new_path)
             except Exception as e:
                 print(e)
                 fail_counter += 1
@@ -60,5 +69,5 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     reader = PdfReader(args.path)
-    reader.rename_files()
+    reader.copy_files()
 
